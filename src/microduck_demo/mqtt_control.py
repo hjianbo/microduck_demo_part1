@@ -15,9 +15,8 @@ from .config import DemoConfig, load_config
 class MqttVelocityBridge:
     """Receive the newest safe velocity intent without blocking MuJoCo."""
 
-    VX_LIMIT = 0.3
-    VY_LIMIT = 0.2
-    YAW_LIMIT = 1.5
+    VX_LIMIT = 0.25
+    YAW_LIMIT = 0.8
 
     def __init__(self, config: DemoConfig):
         self.config = config
@@ -130,13 +129,25 @@ class MqttVelocityBridge:
         if unknown:
             raise ValueError(f"unknown fields: {', '.join(sorted(unknown))}")
 
-        values: list[float] = []
-        for field, limit in (("vx", cls.VX_LIMIT), ("vy", cls.VY_LIMIT), ("yaw", cls.YAW_LIMIT)):
+        values: dict[str, float] = {}
+        for field in ("vx", "vy", "yaw"):
             value = payload.get(field, 0.0)
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise TypeError(f"{field} must be a number")
             number = float(value)
             if not math.isfinite(number):
                 raise ValueError(f"{field} must be finite")
-            values.append(max(-limit, min(limit, number)))
-        return values[0], values[1], values[2]
+            values[field] = number
+
+        if values["vx"] < 0.0:
+            raise ValueError("vx must be non-negative for the pinned walking policy")
+        if values["vy"] != 0.0:
+            raise ValueError("vy must be zero: the pinned walking policy does not support strafing")
+        if values["vx"] == 0.0 and values["yaw"] != 0.0:
+            raise ValueError("turning requires positive vx with the pinned walking policy")
+
+        return (
+            min(cls.VX_LIMIT, values["vx"]),
+            0.0,
+            max(-cls.YAW_LIMIT, min(cls.YAW_LIMIT, values["yaw"])),
+        )

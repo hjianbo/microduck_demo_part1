@@ -35,11 +35,21 @@ Send a velocity command from a second terminal:
 ./scripts/send.sh forward --duration 3
 ```
 
-Other presets are `backward`, `left`, `right`, `turn-left`, `turn-right`, and `stop`. Custom values are also supported:
+The pinned walking policy is reliable for forward motion and turning while moving forward. Use these verified presets:
 
 ```shell
-./scripts/send.sh forward --duration 2 --vx 0.15 --vy 0 --yaw 0.3
+./scripts/send.sh forward-left --duration 3
+./scripts/send.sh forward-right --duration 3
+./scripts/send.sh stop
 ```
+
+Custom forward and turn values are also supported:
+
+```shell
+./scripts/send.sh forward --duration 3 --vx 0.2 --yaw 0.5
+```
+
+The current policy does not reliably walk backward or turn in place, and the official simulator explicitly disables strafing. The sender and receiver therefore reject those command combinations instead of presenting them as supported behavior.
 
 The sender refreshes the command at 10 Hz and always publishes a final zero-velocity message. The simulator independently resets velocity after one second without a valid command.
 

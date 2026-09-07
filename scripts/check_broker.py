@@ -23,7 +23,7 @@ def main() -> None:
             sys.executable,
             "-m",
             "microduck_demo.send_velocity",
-            "turn-left",
+            "forward-left",
             "--duration",
             "0.5",
             "--rate",

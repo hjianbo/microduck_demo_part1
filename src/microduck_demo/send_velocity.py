@@ -13,12 +13,9 @@ from .config import load_config
 
 
 PRESETS: dict[str, tuple[float, float, float]] = {
-    "forward": (0.3, 0.0, 0.0),
-    "backward": (-0.2, 0.0, 0.0),
-    "left": (0.0, 0.15, 0.0),
-    "right": (0.0, -0.15, 0.0),
-    "turn-left": (0.0, 0.0, 0.8),
-    "turn-right": (0.0, 0.0, -0.8),
+    "forward": (0.25, 0.0, 0.0),
+    "forward-left": (0.25, 0.0, 0.8),
+    "forward-right": (0.25, 0.0, -0.8),
     "stop": (0.0, 0.0, 0.0),
 }
 
@@ -28,9 +25,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("action", nargs="?", choices=PRESETS, default="forward")
     parser.add_argument("--duration", type=float, default=2.0, help="Seconds to refresh the command")
     parser.add_argument("--rate", type=float, default=10.0, help="Publish rate in Hz")
-    parser.add_argument("--vx", type=float)
-    parser.add_argument("--vy", type=float)
-    parser.add_argument("--yaw", type=float)
+    parser.add_argument("--vx", type=float, help="Forward speed from 0 to 0.25 m/s")
+    parser.add_argument("--yaw", type=float, help="Turn rate from -0.8 to 0.8 rad/s; requires vx > 0")
     parser.add_argument(
         "--test-deadman",
         action="store_true",
@@ -46,8 +42,13 @@ def main() -> None:
 
     vx, vy, yaw = PRESETS[args.action]
     vx = vx if args.vx is None else args.vx
-    vy = vy if args.vy is None else args.vy
     yaw = yaw if args.yaw is None else args.yaw
+    if not 0.0 <= vx <= 0.25:
+        raise SystemExit("--vx must be between 0 and 0.25 for the pinned walking policy")
+    if not -0.8 <= yaw <= 0.8:
+        raise SystemExit("--yaw must be between -0.8 and 0.8 for the pinned walking policy")
+    if vx == 0.0 and yaw != 0.0:
+        raise SystemExit("the pinned walking policy turns reliably only while moving forward")
     config = load_config()
 
     connected = threading.Event()
