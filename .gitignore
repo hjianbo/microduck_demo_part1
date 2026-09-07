@@ -1,0 +1,10 @@
+.demo/
+.generated/
+.venv/
+__pycache__/
+*.py[cod]
+*.ses
+.pytest_cache/
+.DS_Store
+tmp/
+Microduck_与_Device_Agent_结合可行性报告.pdf

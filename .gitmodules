@@ -1,0 +1,7 @@
+[submodule "vendor/microduck_rl"]
+	path = vendor/microduck_rl
+	url = https://github.com/pollen-robotics/microduck_rl.git
+	branch = develop
+[submodule "vendor/microduck_simulator"]
+	path = vendor/microduck_simulator
+	url = https://huggingface.co/spaces/pollen-robotics/microduck-simulator
