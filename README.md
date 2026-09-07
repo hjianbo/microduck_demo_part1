@@ -39,7 +39,7 @@ The pinned walking policy is reliable for forward motion and turning while movin
 
 ```shell
 ./scripts/send.sh forward-left --duration 3
-./scripts/send.sh forward-right --duration 3
+./scripts/send.sh forward-right --duration 5
 ./scripts/send.sh stop
 ```
 
