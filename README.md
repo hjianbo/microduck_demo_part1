@@ -43,6 +43,14 @@ Other presets are `backward`, `left`, `right`, `turn-left`, `turn-right`, and `s
 
 The sender refreshes the command at 10 Hz and always publishes a final zero-velocity message. The simulator independently resets velocity after one second without a valid command.
 
+To verify the independent receiver-side deadman, intentionally omit the final stop in this simulation-only test:
+
+```shell
+./scripts/send.sh forward --duration 1 --test-deadman
+```
+
+The simulator should log `MQTT: command timeout; velocity reset to zero` about one second after the last velocity message.
+
 Show the generated session and Topic:
 
 ```shell

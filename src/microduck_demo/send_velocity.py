@@ -31,6 +31,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--vx", type=float)
     parser.add_argument("--vy", type=float)
     parser.add_argument("--yaw", type=float)
+    parser.add_argument(
+        "--test-deadman",
+        action="store_true",
+        help="Simulation test only: omit the final stop and let the receiver timeout",
+    )
     return parser
 
 
@@ -79,19 +84,23 @@ def main() -> None:
             sequence += 1
             time.sleep(period)
     finally:
-        stop_payload = json.dumps(
-            {"vx": 0.0, "vy": 0.0, "yaw": 0.0, "seq": sequence, "ts": int(time.time() * 1000)},
-            separators=(",", ":"),
-        )
-        # QoS 0 is appropriate for a latest-value velocity stream, but one
-        # packet can be lost. Repeat the final stop briefly; the receiver's
-        # independent deadman remains the authoritative fallback.
-        for _ in range(3):
-            client.publish(config.topic, stop_payload, qos=0, retain=False).wait_for_publish(timeout=2)
-            time.sleep(0.05)
+        if args.test_deadman:
+            print("Deadman test: final zero velocity intentionally omitted")
+        else:
+            stop_payload = json.dumps(
+                {"vx": 0.0, "vy": 0.0, "yaw": 0.0, "seq": sequence, "ts": int(time.time() * 1000)},
+                separators=(",", ":"),
+            )
+            # QoS 0 is appropriate for a latest-value velocity stream, but one
+            # packet can be lost. Repeat the final stop briefly; the receiver's
+            # independent deadman remains the authoritative fallback.
+            for _ in range(3):
+                client.publish(config.topic, stop_payload, qos=0, retain=False).wait_for_publish(timeout=2)
+                time.sleep(0.05)
         client.disconnect()
         client.loop_stop()
-        print("Zero velocity published; disconnected")
+        if not args.test_deadman:
+            print("Zero velocity published; disconnected")
 
 
 if __name__ == "__main__":
