@@ -43,6 +43,8 @@ The pinned walking policy is reliable for forward motion and turning while movin
 ./scripts/send.sh stop
 ```
 
+![Microduck controlled over MQTT with the forward-right preset](assets/microduck-forward-right.gif)
+
 Custom forward and turn values are also supported:
 
 ```shell
