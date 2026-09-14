@@ -63,6 +63,39 @@ To verify the independent receiver-side deadman, intentionally omit the final st
 
 The simulator should log `MQTT: command timeout; velocity reset to zero` about one second after the last velocity message.
 
+## Try autonomous ball seeking
+
+The first autonomous step is included as a privileged-state baseline: it puts
+the ball at a reproducible random position, simulates a limited forward camera
+field of view, searches until the ball is visible, walks to a kicking pose, and
+then invokes the existing left/right kick policy without teleporting the ball.
+
+```shell
+./scripts/run_simulator.sh \
+  --kick-left "$PWD/vendor/microduck_simulator/app/public/policies/ball_kick_left.onnx" \
+  --kick-right "$PWD/vendor/microduck_simulator/app/public/policies/ball_kick_right.onnx" \
+  --auto-ball \
+  --ball-seed 9
+```
+
+Watch the terminal for `AUTO-BALL` search, approach, kick, and success/miss
+messages. Close the MuJoCo window to stop. Change `--ball-seed` to exercise a
+different repeatable sequence, or omit it for a fresh random sequence.
+
+After each kick, the controller waits for the old ball to settle before it
+spawns the next one. Ball colors rotate between episodes. A short straight
+walking restart and a pose-progress watchdog keep the walking policy from
+remaining in its stationary post-kick state.
+
+This baseline reads the ball pose from MuJoCo; it is not yet a trained visual
+detector. It establishes and measures the complete high-level behavior before
+the privileged observation is replaced with camera detections.
+
+`--auto-ball` automatically selects the all-collision scene and the same MJCF
+position-actuator path used by the official browser simulator. The bundled
+walking policy does not locomote correctly through the optional desktop BAM
+rehearsal path.
+
 Show the generated session and Topic:
 
 ```shell
