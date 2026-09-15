@@ -14,8 +14,8 @@ shape that Device Agent will publish later.
 | 往右走 / 右转 | `move(direction=right)` | Supported as a forward-right curve |
 | 后退 | `move(direction=backward)` | Explicitly rejected: pinned policy is unreliable |
 | 停止 | `stop` | Supported, highest locomotion priority |
-| 左脚踢球 | `kick(foot=left)` | Supported with deterministic ball placement |
-| 右脚踢球 | `kick(foot=right)` | Supported with deterministic ball placement |
+| 左脚踢球 | `kick(foot=left)` | Supported; the ball is never repositioned |
+| 右脚踢球 | `kick(foot=right)` | Supported; the ball is never repositioned |
 
 `left` and `right` are not lateral motion or in-place turns. A new locomotion
 policy must be trained and empirically accepted before `backward` can return
@@ -82,10 +82,12 @@ durations, and out-of-range durations are rejected before reaching MuJoCo.
 ## Ball and kick semantics
 
 The left and right kick policies were trained with a ball in a narrow window in
-front of the selected foot. For a deterministic voice demo, `kick` stops
-locomotion, puts the ball at that trained location, and runs only the requested
-ONNX policy. A kick succeeds if peak ball speed reaches 0.35 m/s or planar ball
-displacement reaches 0.08 m. This is not autonomous visual ball seeking.
+front of the selected foot. `kick` stops locomotion, waits 0.35 seconds, records
+the ball's current position, and runs only the requested ONNX policy. It never
+moves or resets the ball. Move the robot into a suitable pose before kicking;
+otherwise it will kick air and report failure. A kick succeeds if peak ball
+speed reaches 0.35 m/s or planar ball displacement reaches 0.08 m. This is
+manual positioning, not autonomous visual ball seeking.
 
 ## DeviceSpec for product creation
 
@@ -169,6 +171,6 @@ vendor/microduck_rl/.venv/bin/python -m json.tool \
 ```
 
 Automated tests cover validation, velocity mapping, bounded motion, stopping,
-kick exclusivity/result reporting, deterministic ball placement, the loopback
+kick exclusivity/result reporting, explicit ball placement, the loopback
 adapter, and DeviceSpec/implementation alignment. Visual MuJoCo acceptance is
 then performed with the CLI commands above.

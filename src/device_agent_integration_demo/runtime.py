@@ -20,9 +20,10 @@ class PolicyRuntime:
         self.ball.place(position)
 
     def start_kick(self, foot: Foot) -> None:
-        self.ball.begin_kick(foot)
-        # BallController owns placement so that it can measure from the exact
-        # initial position. Suppress PolicyInference's second teleport.
+        self.ball.begin_kick()
+        # Upstream's interactive kick helper teleports the ball into the
+        # policy's training window. Suppress that behavior: this demo must kick
+        # the ball wherever the user has moved the robot relative to it.
         behavior = f"kick_{foot.value}"
         original = self.policy._place_ball
         try:

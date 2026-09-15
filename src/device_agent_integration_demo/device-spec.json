@@ -1,6 +1,6 @@
 {
   "name": "MicroduckSimulator",
-  "description": "MuJoCo Microduck simulator with bounded movement, safe stop, deterministic ball placement, and explicit left/right-foot kicks.",
+  "description": "MuJoCo Microduck simulator with bounded movement, safe stop, explicit ball placement for debugging, and left/right-foot kicks that do not move the ball.",
   "commands": {
     "move": {
       "description": "Move for a bounded duration. left and right are forward curves, not strafing or in-place turns. backward is declared but returns unsupported until a stable policy is available.",
@@ -22,7 +22,7 @@
       "parameters": {}
     },
     "kick": {
-      "description": "Place the simulation ball at the trained position and kick it with the requested foot.",
+      "description": "Kick the ball at its current position with the requested foot. This command never moves or resets the ball.",
       "parameters": {
         "foot": {
           "type": "string",

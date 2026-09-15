@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from device_agent_integration_demo.ball_controller import BallController
-from device_agent_integration_demo.commands import BallPosition, Foot
+from device_agent_integration_demo.commands import BallPosition
 
 
 def make_ball() -> tuple[BallController, SimpleNamespace]:
@@ -17,14 +17,17 @@ def make_ball() -> tuple[BallController, SimpleNamespace]:
 def test_places_ball_at_requested_foot() -> None:
     ball, data = make_ball()
     ball.place(BallPosition.LEFT_KICK)
-    np.testing.assert_allclose(data.qpos[10:13], [1.10, 2.055, 0.025])
+    np.testing.assert_allclose(data.qpos[10:13], [1.09, 2.042, 0.035])
     ball.place(BallPosition.RIGHT_KICK)
-    np.testing.assert_allclose(data.qpos[10:13], [1.10, 1.945, 0.025])
+    np.testing.assert_allclose(data.qpos[10:13], [1.09, 1.958, 0.035])
 
 
 def test_kick_metrics_capture_peak_speed_and_displacement() -> None:
     ball, data = make_ball()
-    ball.begin_kick(Foot.LEFT)
+    ball.place(BallPosition.CENTER)
+    position_before_kick = data.qpos[10:13].copy()
+    ball.begin_kick()
+    np.testing.assert_allclose(data.qpos[10:13], position_before_kick)
     data.qvel[12:15] = [0.4, 0.0, 0.0]
     ball.observe_kick()
     data.qvel[12:15] = 0.0

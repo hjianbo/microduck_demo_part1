@@ -7,12 +7,12 @@ from typing import Any
 
 import numpy as np
 
-from .commands import BallPosition, Foot
+from .commands import BallPosition
 
 
-BALL_RADIUS = 0.025
-BALL_OFFSET_X = 0.10
-BALL_OFFSET_Y = 0.055
+BALL_RADIUS = 0.035
+BALL_OFFSET_X = 0.09
+BALL_OFFSET_Y = 0.042
 
 
 @dataclass(frozen=True)
@@ -65,9 +65,8 @@ class BallController:
         else:
             self._set_relative(0.30, 0.0)
 
-    def begin_kick(self, foot: Foot) -> None:
-        position = BallPosition.LEFT_KICK if foot == Foot.LEFT else BallPosition.RIGHT_KICK
-        self.place(position)
+    def begin_kick(self) -> None:
+        """Measure a kick from the ball's current position without moving it."""
         self._kick_start = self.data.qpos[self.qpos_adr:self.qpos_adr + 2].copy()
         self._kick_max_speed = 0.0
 
