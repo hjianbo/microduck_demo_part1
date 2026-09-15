@@ -32,8 +32,10 @@ def main() -> None:
         "    parser.add_argument('--demo-control-host', default='127.0.0.1')\n"
         "    parser.add_argument('--demo-control-port', type=int, default=8765)\n"
         "    parser.add_argument('--ball-seed', type=int, default=None)\n"
-        "    parser.add_argument('--ball-rolling-friction', type=float, default=0.003,\n"
-        "                        help='Ball rolling friction (default: 0.003; upstream is 0.0001)')\n"
+        "    parser.add_argument('--ball-rolling-friction', type=float, default=0.01,\n"
+        "                        help='Ball rolling friction (default: 0.01; upstream is 0.0001)')\n"
+        "    parser.add_argument('--ball-velocity-damping', type=float, default=3.0,\n"
+        "                        help='Smooth damping after kick contact, per second (default: 3.0)')\n"
         "    args = parser.parse_args()\n",
     )
     generated = replace_once(
@@ -41,6 +43,8 @@ def main() -> None:
         "    # Initialize policy\n",
         "    if not 0.0 <= args.ball_rolling_friction <= 0.05:\n"
         "        parser.error('--ball-rolling-friction must be between 0 and 0.05')\n"
+        "    if not 0.0 <= args.ball_velocity_damping <= 20.0:\n"
+        "        parser.error('--ball-velocity-damping must be between 0 and 20')\n"
         "    ball_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, 'ball_geom')\n"
         "    if ball_geom_id >= 0:\n"
         "        upstream_rolling_friction = float(model.geom_friction[ball_geom_id, 2])\n"
@@ -52,7 +56,8 @@ def main() -> None:
     generated = replace_once(
         generated,
         "    # Verify observation size\n",
-        "    demo_runtime = PolicyRuntime(policy, data, seed=args.ball_seed)\n"
+        "    demo_runtime = PolicyRuntime(policy, data, seed=args.ball_seed,\n"
+        "                                 ball_velocity_damping=args.ball_velocity_damping)\n"
         "    demo_controller = ActionController(demo_runtime)\n"
         "    demo_server = LocalCommandServer(args.demo_control_host, args.demo_control_port)\n"
         "    demo_server.start()\n"
@@ -78,7 +83,7 @@ def main() -> None:
         "                    pending = demo_server.poll()\n\n"
         "                policy.update_ground_pick_phase(actual_dt)\n"
         "                policy.update_behavior(actual_dt)\n"
-        "                demo_controller.update()\n\n",
+        "                demo_controller.update(actual_dt)\n\n",
     )
     generated = replace_once(
         generated,

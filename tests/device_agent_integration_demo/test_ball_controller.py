@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import math
 
 import numpy as np
 import pytest
@@ -29,13 +30,30 @@ def test_kick_metrics_capture_peak_speed_and_displacement() -> None:
     ball.begin_kick()
     np.testing.assert_allclose(data.qpos[10:13], position_before_kick)
     data.qvel[12:15] = [0.4, 0.0, 0.0]
-    ball.observe_kick()
+    ball.observe_kick(0.0)
     data.qvel[12:15] = 0.0
     data.qpos[10] += 0.1
     result = ball.finish_kick()
     assert result.success
     assert result.max_speed_m_s == 0.4
     assert result.displacement_m == pytest.approx(0.1)
+
+
+def test_kicked_ball_is_smoothly_damped_until_stopped() -> None:
+    ball, data = make_ball()
+    ball.begin_kick()
+    data.qvel[12:15] = [1.0, 0.0, 0.0]
+    ball.observe_kick(0.1)
+    assert data.qvel[12] == pytest.approx(math.exp(-0.3))
+    ball.finish_kick()
+
+    moving = True
+    for _ in range(20):
+        moving = ball.update_settling(0.1)
+        if moving is False:
+            break
+    assert moving is False
+    np.testing.assert_allclose(data.qvel[12:18], 0.0)
 
 
 def test_seeded_random_placement_is_reproducible() -> None:

@@ -43,11 +43,14 @@ class FakeRuntime:
     def kick_in_progress(self) -> bool:
         return self.kicking
 
-    def observe_kick(self) -> None:
+    def observe_kick(self, dt: float) -> None:
         self.observations += 1
 
     def finish_kick(self) -> KickMetrics:
         return KickMetrics(True, 0.12, 0.8)
+
+    def update_ball(self, dt: float) -> bool | None:
+        return None
 
 
 def test_move_maps_to_verified_velocity_and_stops_at_deadline() -> None:

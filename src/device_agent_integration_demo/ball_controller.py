@@ -28,7 +28,13 @@ class BallController:
     SUCCESS_DISPLACEMENT_M = 0.08
     SUCCESS_SPEED_M_S = 0.35
 
-    def __init__(self, data: Any, policy: Any, seed: int | None = None):
+    def __init__(
+        self,
+        data: Any,
+        policy: Any,
+        seed: int | None = None,
+        velocity_damping: float = 3.0,
+    ):
         if policy.ball_qpos_adr is None or policy.ball_qvel_adr is None:
             raise ValueError("the selected MuJoCo scene has no ball_free joint")
         self.data = data
@@ -36,8 +42,11 @@ class BallController:
         self.qpos_adr = int(policy.ball_qpos_adr)
         self.qvel_adr = int(policy.ball_qvel_adr)
         self._random = random.Random(seed)
+        self.velocity_damping = velocity_damping
         self._kick_start: np.ndarray | None = None
         self._kick_max_speed = 0.0
+        self._damping_active = False
+        self._settling = False
 
     def _trunk_pose(self) -> tuple[float, float, float]:
         adr = int(self.policy._trunk_qpos_adr)
@@ -69,12 +78,18 @@ class BallController:
         """Measure a kick from the ball's current position without moving it."""
         self._kick_start = self.data.qpos[self.qpos_adr:self.qpos_adr + 2].copy()
         self._kick_max_speed = 0.0
+        self._damping_active = False
+        self._settling = False
 
-    def observe_kick(self) -> None:
+    def observe_kick(self, dt: float) -> None:
         if self._kick_start is None:
             return
         speed = float(np.linalg.norm(self.data.qvel[self.qvel_adr:self.qvel_adr + 3]))
         self._kick_max_speed = max(self._kick_max_speed, speed)
+        if speed >= 0.10:
+            self._damping_active = True
+        if self._damping_active:
+            self._apply_velocity_damping(dt)
 
     def finish_kick(self) -> KickMetrics:
         if self._kick_start is None:
@@ -87,4 +102,22 @@ class BallController:
             max_speed_m_s=self._kick_max_speed,
         )
         self._kick_start = None
+        self._settling = self._damping_active
         return metrics
+
+    def update_settling(self, dt: float) -> bool | None:
+        """Damp a kicked ball smoothly; return False once it has stopped."""
+        if not self._settling:
+            return None
+        self._apply_velocity_damping(dt)
+        speed = float(np.linalg.norm(self.data.qvel[self.qvel_adr:self.qvel_adr + 3]))
+        if speed <= 0.03:
+            self.data.qvel[self.qvel_adr:self.qvel_adr + 6] = 0.0
+            self._settling = False
+            self._damping_active = False
+            return False
+        return True
+
+    def _apply_velocity_damping(self, dt: float) -> None:
+        factor = math.exp(-self.velocity_damping * max(0.0, dt))
+        self.data.qvel[self.qvel_adr:self.qvel_adr + 6] *= factor

@@ -34,5 +34,7 @@ def test_generated_runner_overrides_ball_rolling_friction() -> None:
     )
     runner = Path(".generated/device_agent_integration_demo/infer_policy.py").read_text(encoding="utf-8")
     assert "--ball-rolling-friction" in runner
-    assert "default=0.003" in runner
+    assert "default=0.01" in runner
     assert "model.geom_friction[ball_geom_id, 2] = args.ball_rolling_friction" in runner
+    assert "--ball-velocity-damping" in runner
+    assert "ball_velocity_damping=args.ball_velocity_damping" in runner

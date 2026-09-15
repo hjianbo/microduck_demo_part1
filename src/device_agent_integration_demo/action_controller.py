@@ -20,8 +20,9 @@ class Runtime(Protocol):
     def place_ball(self, position: Any) -> None: ...
     def start_kick(self, foot: Any) -> None: ...
     def kick_in_progress(self) -> bool: ...
-    def observe_kick(self) -> None: ...
+    def observe_kick(self, dt: float) -> None: ...
     def finish_kick(self) -> Any: ...
+    def update_ball(self, dt: float) -> bool | None: ...
 
 
 @dataclass(frozen=True)
@@ -110,7 +111,11 @@ class ActionController:
 
         raise AssertionError(f"unhandled command: {command!r}")
 
-    def update(self) -> None:
+    def update(self, dt: float = 0.02) -> None:
+        settling = self.runtime.update_ball(dt)
+        if settling is False:
+            self.ball_state = "stopped"
+
         if self._pending_kick is not None:
             assert self._kick_start_at is not None
             if self.clock() < self._kick_start_at:
@@ -123,7 +128,7 @@ class ActionController:
 
         if self.motion_state == "kicking":
             if self.runtime.kick_in_progress():
-                self.runtime.observe_kick()
+                self.runtime.observe_kick(dt)
             else:
                 metrics = self.runtime.finish_kick()
                 self.motion_state = "idle"

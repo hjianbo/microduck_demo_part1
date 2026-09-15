@@ -9,9 +9,17 @@ from .commands import BallPosition, Foot
 class PolicyRuntime:
     """Small adapter around the pinned upstream PolicyInference object."""
 
-    def __init__(self, policy: Any, data: Any, seed: int | None = None):
+    def __init__(
+        self,
+        policy: Any,
+        data: Any,
+        seed: int | None = None,
+        ball_velocity_damping: float = 3.0,
+    ):
         self.policy = policy
-        self.ball = BallController(data, policy, seed=seed)
+        self.ball = BallController(
+            data, policy, seed=seed, velocity_damping=ball_velocity_damping
+        )
 
     def set_velocity(self, vx: float, yaw: float) -> None:
         self.policy.set_vel_cmd(vx, 0.0, yaw)
@@ -35,8 +43,11 @@ class PolicyRuntime:
     def kick_in_progress(self) -> bool:
         return self.policy.behavior_mode in {"kick_left", "kick_right"}
 
-    def observe_kick(self) -> None:
-        self.ball.observe_kick()
+    def observe_kick(self, dt: float) -> None:
+        self.ball.observe_kick(dt)
 
     def finish_kick(self) -> KickMetrics:
         return self.ball.finish_kick()
+
+    def update_ball(self, dt: float) -> bool | None:
+        return self.ball.update_settling(dt)

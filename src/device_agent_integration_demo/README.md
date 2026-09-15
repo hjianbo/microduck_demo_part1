@@ -36,14 +36,20 @@ Start the foundation simulator:
 ```
 
 The demo raises the ball's rolling friction from the upstream `0.0001` to
-`0.003`, so a kick does not roll across most of the arena. It is a runtime
-override and does not modify the pinned vendor model. Tune it when launching:
+`0.01`. After kick contact it also applies smooth exponential velocity damping
+at `3.0/s`, including while the kick animation finishes. This lets the ball
+roll visibly but prevents it crossing most of the arena. Both are runtime
+overrides and do not modify the pinned vendor model. Tune them when launching:
 
 ```shell
-./scripts/run_device_agent_integration_demo.sh --ball-rolling-friction 0.005
+./scripts/run_device_agent_integration_demo.sh \
+  --ball-rolling-friction 0.015 \
+  --ball-velocity-damping 4
 ```
 
-The accepted range is 0 through 0.05; larger values stop the ball sooner.
+Rolling friction accepts 0 through 0.05 and velocity damping accepts 0 through
+20. Larger values stop the ball sooner; set damping to zero for pure MuJoCo
+contact physics.
 
 The MuJoCo window stays in the first terminal. In a second terminal, submit
 commands over the loopback-only control socket:
