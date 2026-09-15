@@ -2,6 +2,11 @@
 
 A reproducible MQTT control demo for the official Microduck MuJoCo walking policy.
 
+The repository also contains a Device Agent integration demo using its native
+command, response, telemetry, and event MQTT topics. See
+[`src/device_agent_integration_demo/README.md`](src/device_agent_integration_demo/README.md)
+for its behavior contract, MQTT CLI, DeviceSpec draft, and acceptance steps.
+
 The project pins the official [`microduck_rl`](https://github.com/pollen-robotics/microduck_rl) project and the official [Microduck Simulator](https://huggingface.co/spaces/pollen-robotics/microduck-simulator) as Git submodules. It adds a small Paho MQTT adapter; it does not modify motor control or policy inference.
 
 ## Prerequisites

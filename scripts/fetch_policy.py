@@ -6,9 +6,6 @@ from pathlib import Path
 import shutil
 import subprocess
 
-from huggingface_hub import hf_hub_download
-
-
 ROOT = Path(__file__).resolve().parents[1]
 SPACE = ROOT / "vendor/microduck_simulator"
 FILENAME = "app/public/policies/BEST_alpha_walking.onnx"
@@ -16,11 +13,29 @@ POINTER = SPACE / FILENAME
 TARGET = ROOT / ".demo/models/BEST_alpha_walking.onnx"
 
 
-def expected_digest() -> str:
-    for line in POINTER.read_text(encoding="utf-8").splitlines():
+def _digest_from_lfs_pointer(contents: bytes, source: str) -> str:
+    try:
+        lines = contents.decode("ascii").splitlines()
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(f"Expected a Git LFS pointer at {source}") from exc
+    for line in lines:
         if line.startswith("oid sha256:"):
             return line.removeprefix("oid sha256:")
-    raise RuntimeError(f"Expected a Git LFS pointer at {POINTER}")
+    raise RuntimeError(f"Expected a Git LFS pointer at {source}")
+
+
+def expected_digest() -> str:
+    working_tree_contents = POINTER.read_bytes()
+    if working_tree_contents.startswith(b"version https://git-lfs.github.com/spec/"):
+        return _digest_from_lfs_pointer(working_tree_contents, str(POINTER))
+
+    # Git LFS may automatically hydrate the working tree file. Read the blob
+    # recorded by the pinned submodule commit to retain independent checksum
+    # verification instead of trusting the hydrated binary as its own source.
+    committed_pointer = subprocess.check_output(
+        ["git", "-C", str(SPACE), "show", f"HEAD:{FILENAME}"]
+    )
+    return _digest_from_lfs_pointer(committed_pointer, f"{SPACE}@HEAD:{FILENAME}")
 
 
 def digest(path: Path) -> str:
@@ -40,6 +55,8 @@ def main() -> None:
     revision = subprocess.check_output(
         ["git", "-C", str(SPACE), "rev-parse", "HEAD"], text=True
     ).strip()
+    from huggingface_hub import hf_hub_download
+
     downloaded = Path(
         hf_hub_download(
             repo_id="pollen-robotics/microduck-simulator",

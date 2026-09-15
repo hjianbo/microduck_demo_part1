@@ -17,12 +17,13 @@ dependencies = [
 [project.scripts]
 microduck-send = "microduck_demo.send_velocity:main"
 microduck-session = "microduck_demo.show_session:main"
+microduck-device-demo = "device_agent_integration_demo.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8,<10"]
 
 [tool.uv.build-backend]
-module-name = "microduck_demo"
+module-name = ["microduck_demo", "device_agent_integration_demo"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
