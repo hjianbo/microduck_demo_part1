@@ -26,6 +26,7 @@ class FakeRuntime:
     kicking: bool = False
     kick_foot: Foot | None = None
     observations: int = 0
+    ball_updates: int = 0
 
     def __post_init__(self) -> None:
         self.velocities = []
@@ -50,6 +51,7 @@ class FakeRuntime:
         return KickMetrics(True, 0.12, 0.8)
 
     def update_ball(self, dt: float) -> bool | None:
+        self.ball_updates += 1
         return None
 
 
@@ -91,6 +93,20 @@ def test_stop_cancels_bounded_move() -> None:
     assert controller.snapshot()["motion_state"] == "idle"
 
 
+def test_mqtt_timeout_stops_only_active_locomotion() -> None:
+    runtime = FakeRuntime()
+    controller = ActionController(runtime, command_timeout_s=1.5)
+    assert controller.handle_command_timeout() is False
+
+    controller.submit(MoveCommand(Direction.FORWARD, 5.0))
+    assert controller.handle_command_timeout() is True
+
+    assert runtime.velocities[-1] == (0.0, 0.0)
+    assert controller.snapshot()["last_action_result"] == "timeout"
+    assert controller.snapshot()["command_timeout_s"] == 1.5
+    assert controller.drain_events() == [{"event": "command_timeout", "timeout_s": 1.5}]
+
+
 def test_ball_maintenance_requires_idle_robot() -> None:
     runtime = FakeRuntime()
     controller = ActionController(runtime)
@@ -108,6 +124,9 @@ def test_kick_is_exclusive_and_reports_metrics() -> None:
     assert runtime.kick_foot is None
     assert controller.snapshot()["motion_state"] == "stopping"
     assert controller.submit(KickCommand(Foot.LEFT)).code == 409
+
+    controller.update()
+    assert runtime.ball_updates == 0
 
     clock.now += controller.KICK_SETTLE_S
     controller.update()

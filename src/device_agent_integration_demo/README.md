@@ -48,6 +48,7 @@ DEVICE_AGENT_USERNAME=replace-when-required
 DEVICE_AGENT_PASSWORD=replace-when-required
 DEVICE_AGENT_MQTT_QOS=1
 DEVICE_AGENT_MQTT_KEEPALIVE=30
+DEVICE_AGENT_COMMAND_TIMEOUT=1.0
 ```
 
 Real credentials stay under `.demo/`, which is gitignored. `mqtt://` and
@@ -221,8 +222,13 @@ The adapter currently implements the following guarantees:
 - QoS is configurable and defaults to 1. Retained commands are ignored.
 - Completed request IDs are cached (last 128), so a redelivered one-shot kick
   returns its previous response without kicking twice.
+- MQTT commands without a non-empty `requestId` are rejected, because one-shot
+  actions cannot otherwise be deduplicated safely.
 - A retained online status is published after connect. MQTT Last Will publishes
   offline on an unclean disconnect; graceful shutdown publishes it explicitly.
+- If MQTT remains disconnected for `DEVICE_AGENT_COMMAND_TIMEOUT` seconds,
+  active locomotion is stopped in the simulator main thread and a
+  `command_timeout` event is queued for reconnect. The default is one second.
 - State telemetry is published whenever the controller snapshot changes, and
   controller events are published on the event topic.
 - MuJoCo mutations remain on the simulator main thread; the MQTT network thread

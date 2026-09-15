@@ -45,7 +45,12 @@ class ActionController:
         Direction.RIGHT: (0.20, -0.8, "turning_right"),
     }
 
-    def __init__(self, runtime: Runtime, clock: Callable[[], float] = time.monotonic):
+    def __init__(
+        self,
+        runtime: Runtime,
+        clock: Callable[[], float] = time.monotonic,
+        command_timeout_s: float = 1.0,
+    ):
         self.runtime = runtime
         self.clock = clock
         self.motion_state = "idle"
@@ -59,6 +64,7 @@ class ActionController:
         self._pending_kick: Any = None
         self._kick_start_at: float | None = None
         self._events: list[dict[str, Any]] = []
+        self.command_timeout_s = command_timeout_s
 
     def submit_payload(self, payload: Any) -> ActionResult:
         return self.submit(parse_command(payload))
@@ -112,7 +118,9 @@ class ActionController:
         raise AssertionError(f"unhandled command: {command!r}")
 
     def update(self, dt: float = 0.02) -> None:
-        settling = self.runtime.update_ball(dt)
+        # Do not respawn a recently bumped ball while a requested kick is
+        # waiting for the robot to settle or while its policy is running.
+        settling = None if self.active_action == "kick" else self.runtime.update_ball(dt)
         if settling is True and self.motion_state != "kicking":
             self.ball_state = "moving"
         elif settling is False:
@@ -152,6 +160,14 @@ class ActionController:
             self._stop("success")
             self._event("action_completed", action="move")
 
+    def handle_command_timeout(self) -> bool:
+        """Stop locomotion after a prolonged MQTT outage."""
+        if self.active_action != "move":
+            return False
+        self._stop("timeout")
+        self._event("command_timeout", timeout_s=self.command_timeout_s)
+        return True
+
     def _stop(self, result: str) -> None:
         self.runtime.set_velocity(0.0, 0.0)
         self.motion_state = "idle"
@@ -178,5 +194,5 @@ class ActionController:
             "kick_side": self.kick_side,
             "ball_state": self.ball_state,
             "last_action_result": self.last_action_result,
-            "command_timeout_s": 1.0,
+            "command_timeout_s": self.command_timeout_s,
         }

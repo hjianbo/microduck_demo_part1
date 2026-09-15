@@ -79,3 +79,35 @@ def test_invalid_command_gets_400_response(monkeypatch: Any) -> None:
     topic, payload, _, _ = client.published[-1]
     assert topic == config().responses_topic
     assert payload["code"] == 400
+
+
+def test_missing_request_id_is_rejected(monkeypatch: Any) -> None:
+    monkeypatch.setattr("device_agent_integration_demo.mqtt_transport.mqtt.Client", FakeClient)
+    transport = DeviceAgentMqttTransport(config())
+    client = transport._client
+    command = {"cmd": "kick", "params": {"foot": "left"}}
+    client.on_message(client, None, SimpleNamespace(retain=False, payload=json.dumps(command).encode()))
+
+    assert transport.poll() is None
+    assert client.published[-1][1]["code"] == 400
+    assert "requestId" in client.published[-1][1]["msg"]
+
+
+def test_disconnect_timeout_is_reported_once_and_reset_on_reconnect(monkeypatch: Any) -> None:
+    now = [10.0]
+    monkeypatch.setattr("device_agent_integration_demo.mqtt_transport.mqtt.Client", FakeClient)
+    monkeypatch.setattr("device_agent_integration_demo.mqtt_transport.time.monotonic", lambda: now[0])
+    transport = DeviceAgentMqttTransport(config())
+    transport.start({"motion_state": "walking"})
+    client = transport._client
+
+    client.on_disconnect(client, None, None, 1, None)
+    now[0] += 0.99
+    assert transport.poll_disconnect_timeout() is False
+    now[0] += 0.01
+    assert transport.poll_disconnect_timeout() is True
+    assert transport.poll_disconnect_timeout() is False
+
+    client.on_connect(client, None, None, 0, None)
+    assert transport.poll_disconnect_timeout() is False
+    transport.close()

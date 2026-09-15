@@ -36,6 +36,8 @@ class DeviceAgentMqttTransport:
         self._completed: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._inflight: set[str] = set()
         self._lock = threading.Lock()
+        self._disconnected_at: float | None = None
+        self._disconnect_timeout_reported = False
         self._client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"microduck-sim-{config.device_id}",
@@ -77,6 +79,18 @@ class DeviceAgentMqttTransport:
             return self.mailbox.get_nowait()
         except queue.Empty:
             return None
+
+    def poll_disconnect_timeout(self) -> bool:
+        """Return true once when an MQTT outage exceeds the safety timeout."""
+        with self._lock:
+            if (
+                self._disconnected_at is None
+                or self._disconnect_timeout_reported
+                or time.monotonic() - self._disconnected_at < self.config.command_timeout
+            ):
+                return False
+            self._disconnect_timeout_reported = True
+            return True
 
     def resolve(self, pending: PendingCommand, result: dict[str, Any]) -> None:
         response = {
@@ -129,6 +143,9 @@ class DeviceAgentMqttTransport:
             self._connect_error = str(reason_code)
             self._connected.set()
             return
+        with self._lock:
+            self._disconnected_at = None
+            self._disconnect_timeout_reported = False
         client.subscribe(self.config.commands_topic, qos=self.config.qos)
         client.publish(
             self.config.telemetry_topic,
@@ -149,6 +166,9 @@ class DeviceAgentMqttTransport:
     ) -> None:
         if not self._closed:
             self._connected.clear()
+            with self._lock:
+                if self._disconnected_at is None:
+                    self._disconnected_at = time.monotonic()
             print(f"Device Agent MQTT: disconnected ({reason_code})")
 
     def _on_message(self, client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage) -> None:
@@ -160,11 +180,11 @@ class DeviceAgentMqttTransport:
             payload = json.loads(message.payload.decode("utf-8"))
             if not isinstance(payload, dict):
                 raise TypeError("command payload must be a JSON object")
-            raw_request_id = payload.get("requestId", "")
-            if raw_request_id is not None and not isinstance(raw_request_id, str):
-                raise TypeError("requestId must be a string")
-            request_id = raw_request_id or ""
-        except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as exc:
+            raw_request_id = payload.get("requestId")
+            if not isinstance(raw_request_id, str) or not raw_request_id.strip():
+                raise ValueError("requestId must be a non-empty string")
+            request_id = raw_request_id
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
             self._publish_error(request_id, 400, str(exc))
             return
 

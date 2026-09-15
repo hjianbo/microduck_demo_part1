@@ -38,6 +38,7 @@ if [[ ! -f .demo/device-agent.env ]]; then
         echo "DEVICE_AGENT_PASSWORD="
         echo "DEVICE_AGENT_MQTT_QOS=1"
         echo "DEVICE_AGENT_MQTT_KEEPALIVE=30"
+        echo "DEVICE_AGENT_COMMAND_TIMEOUT=1.0"
     } > .demo/device-agent.env
     echo "Created local MQTT config: .demo/device-agent.env"
 else

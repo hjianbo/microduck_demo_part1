@@ -16,6 +16,7 @@ def test_loads_device_agent_topics_and_tls(tmp_path: Path, monkeypatch: pytest.M
                 "DEVICE_AGENT_DEVICE_ID=duck-01",
                 "DEVICE_AGENT_USERNAME=demo-user",
                 "DEVICE_AGENT_PASSWORD=secret",
+                "DEVICE_AGENT_COMMAND_TIMEOUT=1.5",
             ]
         ),
         encoding="utf-8",
@@ -28,6 +29,7 @@ def test_loads_device_agent_topics_and_tls(tmp_path: Path, monkeypatch: pytest.M
     assert config.responses_topic == "device-agent/duck-product/device/duck-01/responses"
     assert config.telemetry_topic == "v1/duck-product/duck-01/telemetry"
     assert config.events_topic == "v1/duck-product/duck-01/event"
+    assert config.command_timeout == 1.5
 
 
 def test_rejects_non_mqtt_broker(tmp_path: Path) -> None:

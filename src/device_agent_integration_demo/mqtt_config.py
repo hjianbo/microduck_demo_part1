@@ -19,6 +19,7 @@ class DeviceAgentMqttConfig:
     password: str | None = None
     qos: int = 1
     keepalive: int = 30
+    command_timeout: float = 1.0
 
     @property
     def commands_topic(self) -> str:
@@ -71,6 +72,7 @@ def load_mqtt_config(path: str | Path | None = None) -> DeviceAgentMqttConfig:
         "DEVICE_AGENT_PASSWORD",
         "DEVICE_AGENT_MQTT_QOS",
         "DEVICE_AGENT_MQTT_KEEPALIVE",
+        "DEVICE_AGENT_COMMAND_TIMEOUT",
     ):
         if key in os.environ:
             values[key] = os.environ[key]
@@ -99,10 +101,13 @@ def load_mqtt_config(path: str | Path | None = None) -> DeviceAgentMqttConfig:
 
     qos = int(values.get("DEVICE_AGENT_MQTT_QOS", "1"))
     keepalive = int(values.get("DEVICE_AGENT_MQTT_KEEPALIVE", "30"))
+    command_timeout = float(values.get("DEVICE_AGENT_COMMAND_TIMEOUT", "1.0"))
     if qos not in {0, 1, 2}:
         raise ValueError("DEVICE_AGENT_MQTT_QOS must be 0, 1, or 2")
     if not 5 <= keepalive <= 65535:
         raise ValueError("DEVICE_AGENT_MQTT_KEEPALIVE must be between 5 and 65535")
+    if not 0.2 <= command_timeout <= 10.0:
+        raise ValueError("DEVICE_AGENT_COMMAND_TIMEOUT must be between 0.2 and 10.0 seconds")
 
     tls = parsed.scheme == "mqtts"
     return DeviceAgentMqttConfig(
@@ -115,6 +120,7 @@ def load_mqtt_config(path: str | Path | None = None) -> DeviceAgentMqttConfig:
         password=values.get("DEVICE_AGENT_PASSWORD") or None,
         qos=qos,
         keepalive=keepalive,
+        command_timeout=command_timeout,
     )
 
 

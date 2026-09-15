@@ -59,8 +59,10 @@ def main() -> None:
         "        ball_velocity_damping=args.ball_velocity_damping,\n"
         "        model=model, ball_geom_id=ball_geom_id,\n"
         "    )\n"
-        "    demo_controller = ActionController(demo_runtime)\n"
         "    demo_mqtt = DeviceAgentMqttTransport.from_env()\n"
+        "    demo_controller = ActionController(\n"
+        "        demo_runtime, command_timeout_s=demo_mqtt.config.command_timeout,\n"
+        "    )\n"
         "    demo_mqtt.start(demo_controller.snapshot())\n"
         "    demo_last_state = demo_controller.snapshot()\n\n"
         "    # Verify observation size\n",
@@ -69,6 +71,8 @@ def main() -> None:
         generated,
         "                policy.update_ground_pick_phase(actual_dt)\n"
         "                policy.update_behavior(actual_dt)\n\n",
+        "                if demo_mqtt.poll_disconnect_timeout():\n"
+        "                    demo_controller.handle_command_timeout()\n"
         "                pending = demo_mqtt.poll()\n"
         "                while pending is not None:\n"
         "                    try:\n"
