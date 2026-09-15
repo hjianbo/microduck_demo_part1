@@ -3,6 +3,7 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 runner="$project_root/.generated/device_agent_integration_demo/infer_policy.py"
+default_mqtt_config="$project_root/.demo/device-agent.env"
 walking="$project_root/.demo/models/BEST_alpha_walking.onnx"
 kick_left="$project_root/vendor/microduck_simulator/app/public/policies/ball_kick_left.onnx"
 kick_right="$project_root/vendor/microduck_simulator/app/public/policies/ball_kick_right.onnx"
@@ -13,6 +14,15 @@ kick_right="$project_root/vendor/microduck_simulator/app/public/policies/ball_ki
 }
 [[ -f "$kick_left" && -f "$kick_right" ]] || {
     echo "Kick policies are missing from vendor/microduck_simulator." >&2
+    exit 1
+}
+
+if [[ -z "${DEVICE_AGENT_MQTT_CONFIG:-}" ]]; then
+    export DEVICE_AGENT_MQTT_CONFIG="$default_mqtt_config"
+fi
+[[ -f "$DEVICE_AGENT_MQTT_CONFIG" ]] || {
+    echo "MQTT config is missing: $DEVICE_AGENT_MQTT_CONFIG" >&2
+    echo "Run ./scripts/bootstrap.sh or point DEVICE_AGENT_MQTT_CONFIG at your config file." >&2
     exit 1
 }
 

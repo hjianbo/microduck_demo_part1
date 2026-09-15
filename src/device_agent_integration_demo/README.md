@@ -1,9 +1,9 @@
-# Device Agent Integration Demo — foundation simulator
+# Device Agent Integration Demo — MQTT simulator
 
-This directory is the transport-neutral foundation for a Microduck + Device
-Agent demo. Phase 1 deliberately validates the robot behaviors before adding
-MQTT, ASR, or TTS. The local control socket accepts the same `cmd` / `params`
-shape that Device Agent will publish later.
+This directory contains a Microduck simulator that speaks the Device Agent
+MQTT protocol. It subscribes to high-level `cmd` / `params` commands, executes
+them in the MuJoCo main thread, and publishes correlated responses, state
+telemetry, lifecycle status, and action events.
 
 ## Supported behavior
 
@@ -29,11 +29,30 @@ Initialize the repository once:
 ./scripts/bootstrap.sh
 ```
 
-Start the foundation simulator:
+Start the MQTT-connected simulator:
 
 ```shell
 ./scripts/run_device_agent_integration_demo.sh
 ```
+
+`bootstrap.sh` creates the ignored `.demo/device-agent.env` with a unique
+anonymous test device on `broker.emqx.io`. To use a product created in Device
+Agent, edit that file (or copy `device-agent.env.example`) and fill in the
+values shown in its device access guide:
+
+```dotenv
+DEVICE_AGENT_BROKER=mqtts://zero.emqx.io:8883
+DEVICE_AGENT_PRODUCT_ID=replace-with-product-id
+DEVICE_AGENT_DEVICE_ID=replace-with-device-id
+DEVICE_AGENT_USERNAME=replace-when-required
+DEVICE_AGENT_PASSWORD=replace-when-required
+DEVICE_AGENT_MQTT_QOS=1
+DEVICE_AGENT_MQTT_KEEPALIVE=30
+```
+
+Real credentials stay under `.demo/`, which is gitignored. `mqtt://` and
+`mqtts://` are both supported; TLS certificate verification is enabled for
+`mqtts://`.
 
 The demo raises the ball's rolling friction from the upstream `0.0001` to
 `0.01`. After kick contact it also applies smooth exponential velocity damping
@@ -67,7 +86,7 @@ of the `kick` command itself, so the kick still acts on the ball at its current
 position.
 
 The MuJoCo window stays in the first terminal. In a second terminal, submit
-commands over the loopback-only control socket:
+commands through the same MQTT Broker and Device Agent topics:
 
 ```shell
 vendor/microduck_rl/.venv/bin/python -m device_agent_integration_demo.cli status
@@ -80,8 +99,16 @@ vendor/microduck_rl/.venv/bin/python -m device_agent_integration_demo.cli kick l
 vendor/microduck_rl/.venv/bin/python -m device_agent_integration_demo.cli kick right
 ```
 
-The socket binds to `127.0.0.1:8765` by default and is not a remote or security
-boundary. MQTT replaces this adapter in the integration phase.
+The simulator and CLI automatically load `.demo/device-agent.env`. To keep a
+different configuration elsewhere, select it in the command terminal with:
+
+```shell
+export DEVICE_AGENT_MQTT_CONFIG="$PWD/.demo/device-agent.env"
+```
+
+Alternatively pass `--config .demo/device-agent.env` before the subcommand.
+Each CLI invocation subscribes to the response topic before publishing, adds a
+unique `requestId`, and waits only for its matching response.
 
 ## Command contract
 
@@ -137,7 +164,7 @@ Recommended natural-language instructions for the Device Agent are:
 - Never invent raw velocity values or commands outside the DeviceSpec.
 - Explain that backward is unavailable when the device returns code 422.
 
-## Future Device Agent MQTT mapping
+## Device Agent MQTT mapping
 
 Do not commit real Broker credentials. Copy the actual topics displayed by the
 local Device Agent console. With default templates they are:
@@ -185,23 +212,33 @@ Online/state reports use only properties declared in the DeviceSpec:
 }
 ```
 
-The MQTT phase must additionally preserve `requestId`, deduplicate one-shot
-kicks, publish Last Will/offline status, enforce a movement deadman, report
-state after every change, and convert drained controller events to Device Agent
-event payloads.
+The adapter currently implements the following guarantees:
 
-## Phase-1 acceptance
+- Responses preserve `requestId`, include `productId`, and use the documented
+  Device Agent response envelope.
+- QoS is configurable and defaults to 1. Retained commands are ignored.
+- Completed request IDs are cached (last 128), so a redelivered one-shot kick
+  returns its previous response without kicking twice.
+- A retained online status is published after connect. MQTT Last Will publishes
+  offline on an unclean disconnect; graceful shutdown publishes it explicitly.
+- State telemetry is published whenever the controller snapshot changes, and
+  controller events are published on the event topic.
+- MuJoCo mutations remain on the simulator main thread; the MQTT network thread
+  only validates the envelope and queues work.
+
+## Acceptance
 
 Run:
 
 ```shell
-vendor/microduck_rl/.venv/bin/pytest tests/device_agent_integration_demo
+.venv/bin/pytest tests/device_agent_integration_demo
 vendor/microduck_rl/.venv/bin/python -m device_agent_integration_demo.runner_builder
 vendor/microduck_rl/.venv/bin/python -m json.tool \
   src/device_agent_integration_demo/device-spec.json >/dev/null
 ```
 
 Automated tests cover validation, velocity mapping, bounded motion, stopping,
-kick exclusivity/result reporting, explicit ball placement, the loopback
-adapter, and DeviceSpec/implementation alignment. Visual MuJoCo acceptance is
-then performed with the CLI commands above.
+kick exclusivity/result reporting, explicit ball placement, MQTT configuration,
+topic mapping, lifecycle/state/event envelopes, request correlation and
+duplicate suppression, plus DeviceSpec/implementation alignment. Visual MuJoCo
+acceptance is then performed with the MQTT CLI commands above.

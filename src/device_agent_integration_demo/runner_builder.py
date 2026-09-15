@@ -1,4 +1,4 @@
-"""Build a foundation-demo runner from the pinned upstream inference script."""
+"""Build an MQTT Device Agent runner from the pinned upstream inference script."""
 
 from pathlib import Path
 
@@ -23,14 +23,12 @@ def main() -> None:
         "import onnxruntime as ort\n\n"
         "from device_agent_integration_demo.action_controller import ActionController\n"
         "from device_agent_integration_demo.commands import CommandError\n"
-        "from device_agent_integration_demo.local_control import LocalCommandServer\n"
+        "from device_agent_integration_demo.mqtt_transport import DeviceAgentMqttTransport\n"
         "from device_agent_integration_demo.runtime import PolicyRuntime\n",
     )
     generated = replace_once(
         generated,
         "    args = parser.parse_args()\n",
-        "    parser.add_argument('--demo-control-host', default='127.0.0.1')\n"
-        "    parser.add_argument('--demo-control-port', type=int, default=8765)\n"
         "    parser.add_argument('--ball-seed', type=int, default=None)\n"
         "    parser.add_argument('--ball-rolling-friction', type=float, default=0.01,\n"
         "                        help='Ball rolling friction (default: 0.01; upstream is 0.0001)')\n"
@@ -62,16 +60,16 @@ def main() -> None:
         "        model=model, ball_geom_id=ball_geom_id,\n"
         "    )\n"
         "    demo_controller = ActionController(demo_runtime)\n"
-        "    demo_server = LocalCommandServer(args.demo_control_host, args.demo_control_port)\n"
-        "    demo_server.start()\n"
-        "    print(f'Foundation demo control: {demo_server.address[0]}:{demo_server.address[1]}')\n\n"
+        "    demo_mqtt = DeviceAgentMqttTransport.from_env()\n"
+        "    demo_mqtt.start(demo_controller.snapshot())\n"
+        "    demo_last_state = demo_controller.snapshot()\n\n"
         "    # Verify observation size\n",
     )
     generated = replace_once(
         generated,
         "                policy.update_ground_pick_phase(actual_dt)\n"
         "                policy.update_behavior(actual_dt)\n\n",
-        "                pending = demo_server.poll()\n"
+        "                pending = demo_mqtt.poll()\n"
         "                while pending is not None:\n"
         "                    try:\n"
         "                        if pending.payload.get('cmd') == 'status':\n"
@@ -82,16 +80,22 @@ def main() -> None:
         "                        result = {'code': 400, 'msg': str(exc), 'data': demo_controller.snapshot()}\n"
         "                    except Exception as exc:\n"
         "                        result = {'code': 500, 'msg': str(exc), 'data': demo_controller.snapshot()}\n"
-        "                    demo_server.resolve(pending, result)\n"
-        "                    pending = demo_server.poll()\n\n"
+        "                    demo_mqtt.resolve(pending, result)\n"
+        "                    pending = demo_mqtt.poll()\n\n"
         "                policy.update_ground_pick_phase(actual_dt)\n"
         "                policy.update_behavior(actual_dt)\n"
-        "                demo_controller.update(actual_dt)\n\n",
+        "                demo_controller.update(actual_dt)\n"
+        "                demo_state = demo_controller.snapshot()\n"
+        "                if demo_state != demo_last_state:\n"
+        "                    demo_mqtt.publish_state(demo_state)\n"
+        "                    demo_last_state = demo_state\n"
+        "                for demo_event in demo_controller.drain_events():\n"
+        "                    demo_mqtt.publish_event(demo_event)\n\n",
     )
     generated = replace_once(
         generated,
         "    print(\"\\nInference stopped.\")",
-        "    demo_server.close()\n\n    print(\"\\nInference stopped.\")",
+        "    demo_mqtt.close()\n\n    print(\"\\nInference stopped.\")",
     )
     TARGET.parent.mkdir(parents=True, exist_ok=True)
     TARGET.write_text(generated, encoding="utf-8")
