@@ -30,6 +30,7 @@ uv sync --project vendor/microduck_rl --locked
 vendor/microduck_rl/.venv/bin/python scripts/fetch_policy.py
 uv pip install --python vendor/microduck_rl/.venv/bin/python --editable .
 vendor/microduck_rl/.venv/bin/python scripts/build_runner.py
+vendor/microduck_rl/.venv/bin/python -m device_agent_integration_demo.runner_builder
 
 export MICRODUCK_MQTT_CONFIG="$project_root/.demo/session.env"
 vendor/microduck_rl/.venv/bin/microduck-session

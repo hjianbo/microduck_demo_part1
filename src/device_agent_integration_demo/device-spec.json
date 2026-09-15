@@ -1,0 +1,87 @@
+{
+  "name": "MicroduckSimulator",
+  "description": "MuJoCo Microduck simulator with bounded movement, safe stop, deterministic ball placement, and explicit left/right-foot kicks.",
+  "commands": {
+    "move": {
+      "description": "Move for a bounded duration. left and right are forward curves, not strafing or in-place turns. backward is declared but returns unsupported until a stable policy is available.",
+      "parameters": {
+        "direction": {
+          "type": "string",
+          "description": "One of forward, left, right, backward.",
+          "required": true
+        },
+        "duration_s": {
+          "type": "float",
+          "description": "Duration from 0.2 through 5.0 seconds; defaults to 2.0.",
+          "required": false
+        }
+      }
+    },
+    "stop": {
+      "description": "Stop the current locomotion command safely.",
+      "parameters": {}
+    },
+    "kick": {
+      "description": "Place the simulation ball at the trained position and kick it with the requested foot.",
+      "parameters": {
+        "foot": {
+          "type": "string",
+          "description": "One of left or right.",
+          "required": true
+        }
+      }
+    },
+    "place_ball": {
+      "description": "Simulation maintenance command that resets the ball position.",
+      "parameters": {
+        "position": {
+          "type": "string",
+          "description": "One of center, left_kick, right_kick, random; defaults to center.",
+          "required": false
+        }
+      }
+    }
+  },
+  "properties": {
+    "motion_state": {"type": "string", "description": "Current motion state.", "defaultValue": "idle"},
+    "vx": {"type": "float", "description": "Commanded forward velocity in m/s.", "defaultValue": 0.0},
+    "yaw": {"type": "float", "description": "Commanded yaw rate in rad/s.", "defaultValue": 0.0},
+    "active_action": {"type": "string", "description": "Current high-level action.", "defaultValue": "none"},
+    "kick_side": {"type": "string", "description": "Most recently requested kicking foot.", "defaultValue": "none"},
+    "ball_state": {"type": "string", "description": "Current simulated ball state.", "defaultValue": "ready"},
+    "last_action_result": {"type": "string", "description": "Most recent action result.", "defaultValue": "none"},
+    "command_timeout_s": {"type": "float", "description": "Safety timeout used by the future network adapter.", "defaultValue": 1.0}
+  },
+  "events": {
+    "action_completed": {
+      "description": "A movement, ball placement, or kick completed.",
+      "eventType": "info",
+      "outputData": {
+        "action": {"type": "string", "description": "Completed action."},
+        "position": {"type": "string", "description": "Ball position when applicable."},
+        "foot": {"type": "string", "description": "Kicking foot when applicable."},
+        "reason": {"type": "string", "description": "Empty on success; failure reason when applicable."},
+        "displacement_m": {"type": "float", "description": "Ball displacement when applicable."},
+        "max_speed_m_s": {"type": "float", "description": "Peak ball speed when applicable."}
+      }
+    },
+    "action_failed": {
+      "description": "An action failed or is unsupported.",
+      "eventType": "error",
+      "outputData": {
+        "action": {"type": "string", "description": "Failed action."},
+        "reason": {"type": "string", "description": "Stable machine-readable reason."},
+        "foot": {"type": "string", "description": "Kicking foot when applicable."},
+        "displacement_m": {"type": "float", "description": "Ball displacement when applicable."},
+        "max_speed_m_s": {"type": "float", "description": "Peak ball speed when applicable."}
+      }
+    },
+    "command_timeout": {
+      "description": "A network movement command expired and was stopped.",
+      "eventType": "alert",
+      "outputData": {
+        "timeout_s": {"type": "float", "description": "Configured timeout."}
+      }
+    }
+  }
+}
