@@ -56,8 +56,11 @@ def main() -> None:
     generated = replace_once(
         generated,
         "    # Verify observation size\n",
-        "    demo_runtime = PolicyRuntime(policy, data, seed=args.ball_seed,\n"
-        "                                 ball_velocity_damping=args.ball_velocity_damping)\n"
+        "    demo_runtime = PolicyRuntime(\n"
+        "        policy, data, seed=args.ball_seed,\n"
+        "        ball_velocity_damping=args.ball_velocity_damping,\n"
+        "        model=model, ball_geom_id=ball_geom_id,\n"
+        "    )\n"
         "    demo_controller = ActionController(demo_runtime)\n"
         "    demo_server = LocalCommandServer(args.demo_control_host, args.demo_control_port)\n"
         "    demo_server.start()\n"

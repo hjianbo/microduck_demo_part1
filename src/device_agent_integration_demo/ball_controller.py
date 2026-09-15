@@ -13,6 +13,15 @@ from .commands import BallPosition
 BALL_RADIUS = 0.035
 BALL_OFFSET_X = 0.09
 BALL_OFFSET_Y = 0.042
+DEMO_SPAWN_FORWARD_M = 0.43
+BALL_COLORS = (
+    ("orange", (1.0, 0.55, 0.0, 1.0)),
+    ("blue", (0.10, 0.35, 1.0, 1.0)),
+    ("yellow", (1.0, 0.85, 0.05, 1.0)),
+    ("magenta", (0.90, 0.10, 0.75, 1.0)),
+    ("cyan", (0.05, 0.85, 0.90, 1.0)),
+    ("green", (0.10, 0.80, 0.20, 1.0)),
+)
 
 
 @dataclass(frozen=True)
@@ -34,11 +43,15 @@ class BallController:
         policy: Any,
         seed: int | None = None,
         velocity_damping: float = 3.0,
+        model: Any | None = None,
+        ball_geom_id: int = -1,
     ):
         if policy.ball_qpos_adr is None or policy.ball_qvel_adr is None:
             raise ValueError("the selected MuJoCo scene has no ball_free joint")
         self.data = data
         self.policy = policy
+        self.model = model
+        self.ball_geom_id = ball_geom_id
         self.qpos_adr = int(policy.ball_qpos_adr)
         self.qvel_adr = int(policy.ball_qvel_adr)
         self._random = random.Random(seed)
@@ -47,6 +60,8 @@ class BallController:
         self._kick_max_speed = 0.0
         self._damping_active = False
         self._settling = False
+        self._color_index = -1
+        self.color = "unknown"
 
     def _trunk_pose(self) -> tuple[float, float, float]:
         adr = int(self.policy._trunk_qpos_adr)
@@ -73,6 +88,19 @@ class BallController:
             self._set_relative(distance * math.cos(angle), distance * math.sin(angle))
         else:
             self._set_relative(0.30, 0.0)
+
+    def spawn_next_demo_ball(self) -> None:
+        """Spawn the next colored ball at the calibrated five-second approach."""
+        self._color_index = (self._color_index + 1) % len(BALL_COLORS)
+        self.color, rgba = BALL_COLORS[self._color_index]
+        if self.model is not None and self.ball_geom_id >= 0:
+            self.model.geom_rgba[self.ball_geom_id] = rgba
+        self._set_relative(DEMO_SPAWN_FORWARD_M, 0.0)
+        print(
+            f"Ball respawned: color={self.color}, "
+            f"forward={DEMO_SPAWN_FORWARD_M:.2f} m "
+            "(approach with: move forward --duration 5)"
+        )
 
     def begin_kick(self) -> None:
         """Measure a kick from the ball's current position without moving it."""
@@ -115,6 +143,7 @@ class BallController:
             self.data.qvel[self.qvel_adr:self.qvel_adr + 6] = 0.0
             self._settling = False
             self._damping_active = False
+            self.spawn_next_demo_ball()
             return False
         return True
 

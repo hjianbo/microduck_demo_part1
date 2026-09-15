@@ -51,6 +51,21 @@ Rolling friction accepts 0 through 0.05 and velocity damping accepts 0 through
 20. Larger values stop the ball sooner; set damping to zero for pure MuJoCo
 contact physics.
 
+At startup, and again whenever a kicked ball finishes slowing down, the demo
+spawns a new ball `0.43 m` straight ahead of the robot. Colors rotate through
+orange, blue, yellow, magenta, cyan, and green. The distance is calibrated for
+the simple presentation loop:
+
+```shell
+.venv/bin/microduck-device-demo move forward --duration 5
+.venv/bin/microduck-device-demo kick left
+```
+
+Depending on the robot's residual heading, use a short left/right correction
+before kicking. Automatic respawn happens only after a kick and never as part
+of the `kick` command itself, so the kick still acts on the ball at its current
+position.
+
 The MuJoCo window stays in the first terminal. In a second terminal, submit
 commands over the loopback-only control socket:
 

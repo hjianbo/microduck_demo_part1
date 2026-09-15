@@ -15,11 +15,19 @@ class PolicyRuntime:
         data: Any,
         seed: int | None = None,
         ball_velocity_damping: float = 3.0,
+        model: Any | None = None,
+        ball_geom_id: int = -1,
     ):
         self.policy = policy
         self.ball = BallController(
-            data, policy, seed=seed, velocity_damping=ball_velocity_damping
+            data,
+            policy,
+            seed=seed,
+            velocity_damping=ball_velocity_damping,
+            model=model,
+            ball_geom_id=ball_geom_id,
         )
+        self.ball.spawn_next_demo_ball()
 
     def set_velocity(self, vx: float, yaw: float) -> None:
         self.policy.set_vel_cmd(vx, 0.0, yaw)

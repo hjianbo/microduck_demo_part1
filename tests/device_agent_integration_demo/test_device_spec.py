@@ -38,3 +38,4 @@ def test_generated_runner_overrides_ball_rolling_friction() -> None:
     assert "model.geom_friction[ball_geom_id, 2] = args.ball_rolling_friction" in runner
     assert "--ball-velocity-damping" in runner
     assert "ball_velocity_damping=args.ball_velocity_damping" in runner
+    assert "model=model, ball_geom_id=ball_geom_id" in runner

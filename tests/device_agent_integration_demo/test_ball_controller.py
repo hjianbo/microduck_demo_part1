@@ -62,3 +62,20 @@ def test_seeded_random_placement_is_reproducible() -> None:
     first.place(BallPosition.RANDOM)
     second.place(BallPosition.RANDOM)
     np.testing.assert_allclose(first_data.qpos[10:13], second_data.qpos[10:13])
+
+
+def test_demo_respawn_rotates_color_and_uses_five_second_approach_position() -> None:
+    data = SimpleNamespace(qpos=np.zeros(30), qvel=np.zeros(30))
+    data.qpos[0:7] = [1.0, 2.0, 0.125, 1.0, 0.0, 0.0, 0.0]
+    policy = SimpleNamespace(ball_qpos_adr=10, ball_qvel_adr=12, _trunk_qpos_adr=0)
+    model = SimpleNamespace(geom_rgba=np.zeros((1, 4)))
+    ball = BallController(data, policy, model=model, ball_geom_id=0)
+
+    ball.spawn_next_demo_ball()
+    assert ball.color == "orange"
+    np.testing.assert_allclose(data.qpos[10:13], [1.43, 2.0, 0.035])
+    np.testing.assert_allclose(model.geom_rgba[0], [1.0, 0.55, 0.0, 1.0])
+
+    ball.spawn_next_demo_ball()
+    assert ball.color == "blue"
+    np.testing.assert_allclose(model.geom_rgba[0], [0.10, 0.35, 1.0, 1.0])
