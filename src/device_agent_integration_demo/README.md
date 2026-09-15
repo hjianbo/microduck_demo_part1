@@ -55,10 +55,11 @@ Real credentials stay under `.demo/`, which is gitignored. `mqtt://` and
 `mqtts://`.
 
 The demo raises the ball's rolling friction from the upstream `0.0001` to
-`0.01`. After kick contact it also applies smooth exponential velocity damping
-at `3.0/s`, including while the kick animation finishes. This lets the ball
-roll visibly but prevents it crossing most of the arena. Both are runtime
-overrides and do not modify the pinned vendor model. Tune them when launching:
+`0.01`. After either kick or walking contact it also applies smooth exponential
+velocity damping at `3.0/s`, including while the kick animation finishes. This
+lets the ball roll visibly but prevents it crossing most of the arena. Both are
+runtime overrides and do not modify the pinned vendor model. Tune them when
+launching:
 
 ```shell
 ./scripts/run_device_agent_integration_demo.sh \
@@ -70,10 +71,11 @@ Rolling friction accepts 0 through 0.05 and velocity damping accepts 0 through
 20. Larger values stop the ball sooner; set damping to zero for pure MuJoCo
 contact physics.
 
-At startup, and again whenever a kicked ball finishes slowing down, the demo
-spawns a new ball `0.43 m` straight ahead of the robot. Colors rotate through
-orange, blue, yellow, magenta, cyan, and green. The distance is calibrated for
-the simple presentation loop:
+At startup, and again whenever a ball moved by either a kick or walking contact
+finishes slowing down, the demo spawns a new ball `0.43 m` straight ahead of
+the robot. Colors rotate through orange, blue, yellow, magenta, cyan, and
+green. Small physics jitter is ignored. The distance is calibrated for the
+simple presentation loop:
 
 ```shell
 .venv/bin/microduck-device-demo move forward --duration 5
@@ -81,9 +83,9 @@ the simple presentation loop:
 ```
 
 Depending on the robot's residual heading, use a short left/right correction
-before kicking. Automatic respawn happens only after a kick and never as part
-of the `kick` command itself, so the kick still acts on the ball at its current
-position.
+before kicking. Automatic respawn happens after the moved ball settles and
+never as part of the `kick` command itself, so the kick still acts on the ball
+at its current position.
 
 The MuJoCo window stays in the first terminal. In a second terminal, submit
 commands through the same MQTT Broker and Device Agent topics:

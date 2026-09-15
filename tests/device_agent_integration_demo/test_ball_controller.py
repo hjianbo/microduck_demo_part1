@@ -56,6 +56,37 @@ def test_kicked_ball_is_smoothly_damped_until_stopped() -> None:
     np.testing.assert_allclose(data.qvel[12:18], 0.0)
 
 
+def test_ball_bumped_without_a_kick_respawns_after_stopping() -> None:
+    ball, data = make_ball()
+    ball.spawn_next_demo_ball()
+    original_position = data.qpos[10:12].copy()
+    assert ball.color == "orange"
+
+    data.qpos[10] += 0.04
+    data.qvel[12:14] = [0.20, 0.0]
+    assert ball.update_settling(0.1) is True
+
+    for _ in range(30):
+        if ball.update_settling(0.1) is False:
+            break
+    else:
+        pytest.fail("a bumped ball did not settle and respawn")
+
+    assert ball.color == "blue"
+    assert data.qpos[10] != pytest.approx(original_position[0] + 0.04)
+    np.testing.assert_allclose(data.qvel[12:18], 0.0)
+
+
+def test_stationary_ball_jitter_does_not_trigger_respawn() -> None:
+    ball, data = make_ball()
+    ball.spawn_next_demo_ball()
+    data.qpos[10] += ball.MOVEMENT_DISPLACEMENT_M / 2
+    data.qvel[12:14] = [ball.MOVEMENT_SPEED_M_S / 2, 0.0]
+
+    assert ball.update_settling(0.1) is None
+    assert ball.color == "orange"
+
+
 def test_seeded_random_placement_is_reproducible() -> None:
     first, first_data = make_ball()
     second, second_data = make_ball()

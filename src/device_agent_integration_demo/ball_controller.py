@@ -36,6 +36,9 @@ class BallController:
 
     SUCCESS_DISPLACEMENT_M = 0.08
     SUCCESS_SPEED_M_S = 0.35
+    MOVEMENT_DISPLACEMENT_M = 0.025
+    MOVEMENT_SPEED_M_S = 0.08
+    STOP_SPEED_M_S = 0.03
 
     def __init__(
         self,
@@ -60,6 +63,7 @@ class BallController:
         self._kick_max_speed = 0.0
         self._damping_active = False
         self._settling = False
+        self._tracked_position: np.ndarray | None = None
         self._color_index = -1
         self.color = "unknown"
 
@@ -76,6 +80,9 @@ class BallController:
         by = y + math.sin(yaw) * forward + math.cos(yaw) * lateral
         self.data.qpos[self.qpos_adr:self.qpos_adr + 7] = [bx, by, BALL_RADIUS, 1, 0, 0, 0]
         self.data.qvel[self.qvel_adr:self.qvel_adr + 6] = 0.0
+        self._tracked_position = self.data.qpos[self.qpos_adr:self.qpos_adr + 2].copy()
+        self._damping_active = False
+        self._settling = False
 
     def place(self, position: BallPosition) -> None:
         if position == BallPosition.LEFT_KICK:
@@ -134,12 +141,30 @@ class BallController:
         return metrics
 
     def update_settling(self, dt: float) -> bool | None:
-        """Damp a kicked ball smoothly; return False once it has stopped."""
+        """Track any displaced ball, damp it, and respawn it after it stops."""
+        # Kick observation owns damping and measurements while it is active.
+        if self._kick_start is not None:
+            return None
+        position = self.data.qpos[self.qpos_adr:self.qpos_adr + 2]
+        planar_velocity = self.data.qvel[self.qvel_adr:self.qvel_adr + 2]
+        speed = float(np.linalg.norm(planar_velocity))
+        displacement = (
+            0.0
+            if self._tracked_position is None
+            else float(np.linalg.norm(position - self._tracked_position))
+        )
+        if not self._settling and (
+            speed >= self.MOVEMENT_SPEED_M_S
+            or displacement >= self.MOVEMENT_DISPLACEMENT_M
+        ):
+            self._damping_active = True
+            self._settling = True
+
         if not self._settling:
             return None
         self._apply_velocity_damping(dt)
-        speed = float(np.linalg.norm(self.data.qvel[self.qvel_adr:self.qvel_adr + 3]))
-        if speed <= 0.03:
+        speed = float(np.linalg.norm(self.data.qvel[self.qvel_adr:self.qvel_adr + 2]))
+        if speed <= self.STOP_SPEED_M_S:
             self.data.qvel[self.qvel_adr:self.qvel_adr + 6] = 0.0
             self._settling = False
             self._damping_active = False

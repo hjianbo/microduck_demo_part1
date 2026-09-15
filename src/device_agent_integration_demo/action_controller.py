@@ -113,7 +113,9 @@ class ActionController:
 
     def update(self, dt: float = 0.02) -> None:
         settling = self.runtime.update_ball(dt)
-        if settling is False:
+        if settling is True and self.motion_state != "kicking":
+            self.ball_state = "moving"
+        elif settling is False:
             self.ball_state = "ready"
 
         if self._pending_kick is not None:
