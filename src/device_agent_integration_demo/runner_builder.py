@@ -32,7 +32,22 @@ def main() -> None:
         "    parser.add_argument('--demo-control-host', default='127.0.0.1')\n"
         "    parser.add_argument('--demo-control-port', type=int, default=8765)\n"
         "    parser.add_argument('--ball-seed', type=int, default=None)\n"
+        "    parser.add_argument('--ball-rolling-friction', type=float, default=0.003,\n"
+        "                        help='Ball rolling friction (default: 0.003; upstream is 0.0001)')\n"
         "    args = parser.parse_args()\n",
+    )
+    generated = replace_once(
+        generated,
+        "    # Initialize policy\n",
+        "    if not 0.0 <= args.ball_rolling_friction <= 0.05:\n"
+        "        parser.error('--ball-rolling-friction must be between 0 and 0.05')\n"
+        "    ball_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, 'ball_geom')\n"
+        "    if ball_geom_id >= 0:\n"
+        "        upstream_rolling_friction = float(model.geom_friction[ball_geom_id, 2])\n"
+        "        model.geom_friction[ball_geom_id, 2] = args.ball_rolling_friction\n"
+        "        print(f'Ball rolling friction: {upstream_rolling_friction:g} -> '\n"
+        "              f'{args.ball_rolling_friction:g}')\n\n"
+        "    # Initialize policy\n",
     )
     generated = replace_once(
         generated,

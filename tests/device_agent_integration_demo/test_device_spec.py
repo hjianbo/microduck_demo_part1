@@ -1,5 +1,7 @@
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 from device_agent_integration_demo.commands import BallPosition, Direction, Foot, parse_command
 
@@ -23,3 +25,14 @@ def test_device_spec_is_valid_json_and_matches_parser() -> None:
         parse_command({"cmd": "kick", "params": {"foot": foot.value}})
     for position in BallPosition:
         parse_command({"cmd": "place_ball", "params": {"position": position.value}})
+
+
+def test_generated_runner_overrides_ball_rolling_friction() -> None:
+    subprocess.run(
+        [sys.executable, "-m", "device_agent_integration_demo.runner_builder"],
+        check=True,
+    )
+    runner = Path(".generated/device_agent_integration_demo/infer_policy.py").read_text(encoding="utf-8")
+    assert "--ball-rolling-friction" in runner
+    assert "default=0.003" in runner
+    assert "model.geom_friction[ball_geom_id, 2] = args.ball_rolling_friction" in runner
