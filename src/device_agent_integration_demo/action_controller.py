@@ -40,9 +40,9 @@ class ActionController:
 
     KICK_SETTLE_S = 0.35
     VELOCITIES = {
-        Direction.FORWARD: (0.25, 0.0, "walking"),
-        Direction.LEFT: (0.20, 0.8, "turning_left"),
-        Direction.RIGHT: (0.20, -0.8, "turning_right"),
+        Direction.FORWARD: (0.25, 0.0),
+        Direction.LEFT: (0.20, 0.8),
+        Direction.RIGHT: (0.20, -0.8),
     }
 
     def __init__(
@@ -55,6 +55,7 @@ class ActionController:
         self.clock = clock
         self.motion_state = "idle"
         self.vx = 0.0
+        self.vy = 0.0
         self.yaw = 0.0
         self.active_action = "none"
         self.kick_side = "none"
@@ -71,7 +72,7 @@ class ActionController:
 
     def submit(self, command: DemoCommand) -> ActionResult:
         if isinstance(command, StopCommand):
-            if self.motion_state == "kicking":
+            if self.active_action == "kick":
                 return ActionResult(409, "an active kick cannot be interrupted safely", self.snapshot())
             self._stop("stopped")
             return ActionResult(0, "ok", self.snapshot())
@@ -84,9 +85,9 @@ class ActionController:
                 self.last_action_result = "rejected"
                 self._event("action_failed", action="move", reason="backward_policy_unsupported")
                 return ActionResult(422, "backward is unsupported by the pinned walking policy", self.snapshot())
-            vx, yaw, state = self.VELOCITIES[command.direction]
+            vx, yaw = self.VELOCITIES[command.direction]
             self.runtime.set_velocity(vx, yaw)
-            self.motion_state = state
+            self.motion_state = "moving"
             self.vx, self.yaw = vx, yaw
             self.active_action = "move"
             self.last_action_result = "none"
@@ -104,7 +105,7 @@ class ActionController:
 
         if isinstance(command, KickCommand):
             self.runtime.set_velocity(0.0, 0.0)
-            self.motion_state = "stopping"
+            self.motion_state = "idle"
             self.vx = self.yaw = 0.0
             self.active_action = "kick"
             self.kick_side = command.foot.value
@@ -121,7 +122,7 @@ class ActionController:
         # Do not respawn a recently bumped ball while a requested kick is
         # waiting for the robot to settle or while its policy is running.
         settling = None if self.active_action == "kick" else self.runtime.update_ball(dt)
-        if settling is True and self.motion_state != "kicking":
+        if settling is True and self.active_action != "kick":
             self.ball_state = "moving"
         elif settling is False:
             self.ball_state = "ready"
@@ -133,10 +134,10 @@ class ActionController:
             self.runtime.start_kick(self._pending_kick)
             self._pending_kick = None
             self._kick_start_at = None
-            self.motion_state = "kicking"
+            self.motion_state = "moving"
             return
 
-        if self.motion_state == "kicking":
+        if self.active_action == "kick":
             if self.runtime.kick_in_progress():
                 self.runtime.observe_kick(dt)
             else:
@@ -189,6 +190,7 @@ class ActionController:
         return {
             "motion_state": self.motion_state,
             "vx": self.vx,
+            "vy": self.vy,
             "yaw": self.yaw,
             "active_action": self.active_action,
             "kick_side": self.kick_side,
@@ -196,3 +198,7 @@ class ActionController:
             "last_action_result": self.last_action_result,
             "command_timeout_s": self.command_timeout_s,
         }
+
+    def telemetry_snapshot(self) -> dict[str, str | float]:
+        """Return a full snapshot matching every DeviceSpec property."""
+        return self.snapshot()

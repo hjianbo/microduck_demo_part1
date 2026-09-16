@@ -55,6 +55,9 @@ class PlaceBallCommand:
 
 DemoCommand = MoveCommand | StopCommand | KickCommand | PlaceBallCommand
 
+MIN_MOVE_DURATION_S = 0.2
+MAX_MOVE_DURATION_S = 30.0
+
 
 def _object(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
@@ -94,8 +97,11 @@ def parse_command(payload: Any) -> DemoCommand:
         if isinstance(duration, bool) or not isinstance(duration, (int, float)):
             raise CommandError("duration_s must be a number")
         duration = float(duration)
-        if not math.isfinite(duration) or not 0.2 <= duration <= 5.0:
-            raise CommandError("duration_s must be finite and between 0.2 and 5.0")
+        if not math.isfinite(duration) or not MIN_MOVE_DURATION_S <= duration <= MAX_MOVE_DURATION_S:
+            raise CommandError(
+                f"duration_s must be finite and between {MIN_MOVE_DURATION_S} and "
+                f"{MAX_MOVE_DURATION_S}"
+            )
         return MoveCommand(direction=direction, duration_s=duration)
 
     if name == "stop":

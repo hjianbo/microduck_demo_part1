@@ -16,6 +16,9 @@ from device_agent_integration_demo.commands import (
 
 def test_parses_public_commands() -> None:
     assert parse_command({"cmd": "move", "params": {"direction": "left"}}) == MoveCommand(Direction.LEFT)
+    assert parse_command(
+        {"cmd": "move", "params": {"direction": "left", "duration_s": 30.0}}
+    ) == MoveCommand(Direction.LEFT, 30.0)
     assert parse_command({"cmd": "kick", "params": {"foot": "right"}}) == KickCommand(Foot.RIGHT)
     assert isinstance(parse_command({"cmd": "stop"}), StopCommand)
     assert isinstance(parse_command({"cmd": "reset_ball"}), PlaceBallCommand)
@@ -30,7 +33,7 @@ def test_parses_public_commands() -> None:
         {"cmd": "move", "params": {"direction": "sideways"}},
         {"cmd": "move", "params": {"direction": "forward", "duration_s": True}},
         {"cmd": "move", "params": {"direction": "forward", "duration_s": math.inf}},
-        {"cmd": "move", "params": {"direction": "forward", "duration_s": 5.1}},
+        {"cmd": "move", "params": {"direction": "forward", "duration_s": 30.1}},
         {"cmd": "kick", "params": {"foot": "middle"}},
         {"cmd": "stop", "params": {"now": True}},
         {"cmd": "stop", "unexpected": 1},

@@ -12,7 +12,7 @@
         },
         "duration_s": {
           "type": "float",
-          "description": "Duration from 0.2 through 5.0 seconds; defaults to 2.0.",
+          "description": "Duration from 0.2 through 30.0 seconds; defaults to 2.0.",
           "required": false
         }
       }
@@ -43,13 +43,14 @@
     }
   },
   "properties": {
-    "motion_state": {"type": "string", "description": "Current motion state.", "defaultValue": "idle"},
+    "motion_state": {"type": "string", "description": "Current motion state: idle or moving.", "defaultValue": "idle"},
     "vx": {"type": "float", "description": "Commanded forward velocity in m/s.", "defaultValue": 0.0},
+    "vy": {"type": "float", "description": "Commanded lateral velocity in m/s; zero because the walking policy does not support strafing.", "defaultValue": 0.0},
     "yaw": {"type": "float", "description": "Commanded yaw rate in rad/s.", "defaultValue": 0.0},
-    "active_action": {"type": "string", "description": "Current high-level action.", "defaultValue": "none"},
-    "kick_side": {"type": "string", "description": "Most recently requested kicking foot.", "defaultValue": "none"},
-    "ball_state": {"type": "string", "description": "Current simulated ball state.", "defaultValue": "ready"},
-    "last_action_result": {"type": "string", "description": "Most recent action result.", "defaultValue": "none"},
+    "active_action": {"type": "string", "description": "Current high-level action: none, move, or kick.", "defaultValue": "none"},
+    "kick_side": {"type": "string", "description": "Most recently requested kicking foot: none, left, or right.", "defaultValue": "none"},
+    "ball_state": {"type": "string", "description": "Current simulated ball state: ready, moving, or stopped.", "defaultValue": "ready"},
+    "last_action_result": {"type": "string", "description": "Most recent action result: none, rejected, stopped, success, failed, or timeout.", "defaultValue": "none"},
     "command_timeout_s": {"type": "float", "description": "MQTT disconnect timeout before active locomotion is stopped.", "defaultValue": 1.0}
   },
   "events": {

@@ -57,7 +57,9 @@ def test_command_response_state_event_and_duplicate(monkeypatch: Any) -> None:
     pending = transport.poll()
     assert pending is not None
     transport.resolve(pending, {"code": 0, "msg": "accepted", "data": {"active_action": "kick"}})
-    transport.publish_state({"motion_state": "kicking"})
+    transport.publish_state(
+        {"motion_state": "moving", "vx": 0.0, "vy": 0.0, "active_action": "kick"}
+    )
     transport.publish_event({"event": "action_completed", "action": "kick"})
     client.on_message(client, None, message)
 
@@ -98,7 +100,9 @@ def test_disconnect_timeout_is_reported_once_and_reset_on_reconnect(monkeypatch:
     monkeypatch.setattr("device_agent_integration_demo.mqtt_transport.mqtt.Client", FakeClient)
     monkeypatch.setattr("device_agent_integration_demo.mqtt_transport.time.monotonic", lambda: now[0])
     transport = DeviceAgentMqttTransport(config())
-    transport.start({"motion_state": "walking"})
+    transport.start(
+        {"motion_state": "moving", "vx": 0.25, "vy": 0.0, "active_action": "move"}
+    )
     client = transport._client
 
     client.on_disconnect(client, None, None, 1, None)

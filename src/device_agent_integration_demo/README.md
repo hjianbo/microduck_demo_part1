@@ -130,7 +130,7 @@ Commands intentionally use the Device Agent payload envelope:
 Allowed commands are:
 
 - `move`: `direction` is `forward`, `left`, `right`, or `backward`; optional
-  `duration_s` is finite and between 0.2 and 5.0.
+  `duration_s` is finite and between 0.2 and 30.0.
 - `stop`: no parameters.
 - `kick`: required `foot` is `left` or `right`.
 - `place_ball`: optional `position` is `center`, `left_kick`, `right_kick`, or
@@ -186,13 +186,14 @@ Response example:
   "code": 0,
   "msg": "accepted",
   "requestId": "req-001",
-  "data": {"motion_state": "walking", "vx": 0.25, "yaw": 0.0},
+  "data": {"motion_state": "moving", "vx": 0.25, "vy": 0.0, "yaw": 0.0},
   "ts": 1710000000000,
   "metadata": {"productId": "replace-in-device-agent", "source": "microduck-simulator"}
 }
 ```
 
-Online/state reports use only properties declared in the DeviceSpec:
+Online/state reports include a full snapshot of every property declared in the
+DeviceSpec:
 
 ```json
 {
@@ -202,6 +203,7 @@ Online/state reports use only properties declared in the DeviceSpec:
     "state": {
       "motion_state": "idle",
       "vx": 0.0,
+      "vy": 0.0,
       "yaw": 0.0,
       "active_action": "none",
       "kick_side": "none",
