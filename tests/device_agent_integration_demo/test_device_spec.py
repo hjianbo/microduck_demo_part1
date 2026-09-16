@@ -20,6 +20,7 @@ def test_device_spec_is_valid_json_and_matches_parser() -> None:
     }
     assert set(spec["events"]) == {"action_completed", "action_failed", "command_timeout"}
     assert set(ActionController(object()).telemetry_snapshot()) == set(spec["properties"])
+    assert "stopped" not in spec["properties"]["ball_state"]["description"]
 
     for direction in Direction:
         parse_command({"cmd": "move", "params": {"direction": direction.value}})
