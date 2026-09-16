@@ -173,6 +173,38 @@ def test_snapshots_only_expose_device_agent_motion_states() -> None:
     assert all(state["vy"] == 0.0 for state in snapshots)
 
 
+def test_failed_kick_reports_idle_with_a_valid_ready_ball_state() -> None:
+    runtime, clock = FakeRuntime(), Clock()
+    runtime.finish_kick = lambda: KickMetrics(False, 0.0, 0.0)
+    controller = ActionController(runtime, clock)
+
+    controller.submit(KickCommand(Foot.LEFT))
+    clock.now += controller.KICK_SETTLE_S
+    controller.update()
+    runtime.kicking = False
+    controller.update()
+
+    assert controller.telemetry_snapshot()["motion_state"] == "idle"
+    assert controller.telemetry_snapshot()["ball_state"] == "ready"
+
+
+def test_snapshots_only_expose_device_agent_ball_states() -> None:
+    runtime, clock = FakeRuntime(), Clock()
+    controller = ActionController(runtime, clock)
+
+    snapshots = [controller.snapshot()]
+    controller.submit(KickCommand(Foot.RIGHT))
+    snapshots.append(controller.snapshot())
+    clock.now += controller.KICK_SETTLE_S
+    controller.update()
+    snapshots.append(controller.snapshot())
+    runtime.kicking = False
+    controller.update()
+    snapshots.append(controller.snapshot())
+
+    assert {state["ball_state"] for state in snapshots} <= {"ready", "moving"}
+
+
 def test_telemetry_snapshot_is_complete_and_tracks_actions() -> None:
     controller = ActionController(FakeRuntime())
     controller.submit(MoveCommand(Direction.LEFT))

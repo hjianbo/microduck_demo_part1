@@ -144,7 +144,11 @@ class ActionController:
                 metrics = self.runtime.finish_kick()
                 self.motion_state = "idle"
                 self.active_action = "none"
-                self.ball_state = "moving" if metrics.max_speed_m_s > 0.05 else "stopped"
+                # Device Agent only accepts the externally declared ball states.
+                # A ball that did not move is still available for another kick,
+                # so report it as ready instead of rejecting the whole snapshot
+                # with the unsupported legacy value "stopped".
+                self.ball_state = "moving" if metrics.max_speed_m_s > 0.05 else "ready"
                 self.last_action_result = "success" if metrics.success else "failed"
                 event = "action_completed" if metrics.success else "action_failed"
                 self._event(
