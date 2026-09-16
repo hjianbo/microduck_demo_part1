@@ -112,6 +112,7 @@ class DeviceAgentMqttTransport:
 
     def publish_state(self, state: dict[str, Any]) -> None:
         self._initial_state = state.copy()
+        print(f"Device Agent MQTT: publishing state {self._encode(state)}")
         self._publish(
             self.config.telemetry_topic,
             {"type": "state", "data": state, "ts": self._now_ms(), "metadata": self._metadata()},

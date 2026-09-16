@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import sys
 
+from device_agent_integration_demo.action_controller import ActionController
 from device_agent_integration_demo.commands import BallPosition, Direction, Foot, parse_command
 
 
@@ -14,10 +15,11 @@ def test_device_spec_is_valid_json_and_matches_parser() -> None:
     assert set(spec) == {"name", "description", "commands", "properties", "events"}
     assert set(spec["commands"]) == {"move", "stop", "kick", "place_ball"}
     assert set(spec["properties"]) == {
-        "motion_state", "vx", "yaw", "active_action", "kick_side",
+        "motion_state", "vx", "vy", "yaw", "active_action", "kick_side",
         "ball_state", "last_action_result", "command_timeout_s",
     }
     assert set(spec["events"]) == {"action_completed", "action_failed", "command_timeout"}
+    assert set(ActionController(object()).telemetry_snapshot()) == set(spec["properties"])
 
     for direction in Direction:
         parse_command({"cmd": "move", "params": {"direction": direction.value}})
@@ -39,3 +41,5 @@ def test_generated_runner_overrides_ball_rolling_friction() -> None:
     assert "--ball-velocity-damping" in runner
     assert "ball_velocity_damping=args.ball_velocity_damping" in runner
     assert "model=model, ball_geom_id=ball_geom_id" in runner
+    assert "demo_mqtt.start(demo_controller.telemetry_snapshot())" in runner
+    assert "demo_mqtt.publish_state(demo_state)" in runner

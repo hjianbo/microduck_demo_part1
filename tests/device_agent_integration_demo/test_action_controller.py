@@ -61,7 +61,9 @@ def test_move_maps_to_verified_velocity_and_stops_at_deadline() -> None:
     result = controller.submit(MoveCommand(Direction.LEFT, 1.5))
     assert result.code == 0
     assert runtime.velocities == [(0.2, 0.8)]
-    assert controller.snapshot()["motion_state"] == "turning_left"
+    assert controller.snapshot()["motion_state"] == "moving"
+    assert controller.snapshot()["vx"] == 0.2
+    assert controller.snapshot()["vy"] == 0.0
 
     clock.now += 1.49
     controller.update()
@@ -122,7 +124,7 @@ def test_kick_is_exclusive_and_reports_metrics() -> None:
     assert controller.submit(KickCommand(Foot.RIGHT)).code == 0
     assert runtime.velocities == [(0.0, 0.0)]
     assert runtime.kick_foot is None
-    assert controller.snapshot()["motion_state"] == "stopping"
+    assert controller.snapshot()["motion_state"] == "idle"
     assert controller.submit(KickCommand(Foot.LEFT)).code == 409
 
     controller.update()
@@ -131,6 +133,7 @@ def test_kick_is_exclusive_and_reports_metrics() -> None:
     clock.now += controller.KICK_SETTLE_S
     controller.update()
     assert runtime.kick_foot == Foot.RIGHT
+    assert controller.snapshot()["motion_state"] == "moving"
     assert controller.submit(KickCommand(Foot.LEFT)).code == 409
     assert controller.submit(StopCommand()).code == 409
 
@@ -139,6 +142,7 @@ def test_kick_is_exclusive_and_reports_metrics() -> None:
     runtime.kicking = False
     controller.update()
     assert controller.snapshot()["last_action_result"] == "success"
+    assert controller.snapshot()["motion_state"] == "idle"
     assert controller.drain_events() == [{
         "event": "action_completed",
         "action": "kick",
@@ -147,3 +151,41 @@ def test_kick_is_exclusive_and_reports_metrics() -> None:
         "displacement_m": 0.12,
         "max_speed_m_s": 0.8,
     }]
+
+
+def test_snapshots_only_expose_device_agent_motion_states() -> None:
+    runtime, clock = FakeRuntime(), Clock()
+    controller = ActionController(runtime, clock)
+
+    snapshots = [controller.snapshot()]
+    for direction in (Direction.FORWARD, Direction.LEFT, Direction.RIGHT):
+        snapshots.append(controller.submit(MoveCommand(direction)).data)
+        snapshots.append(controller.submit(StopCommand()).data)
+    snapshots.append(controller.submit(KickCommand(Foot.LEFT)).data)
+    clock.now += controller.KICK_SETTLE_S
+    controller.update()
+    snapshots.append(controller.snapshot())
+    runtime.kicking = False
+    controller.update()
+    snapshots.append(controller.snapshot())
+
+    assert {state["motion_state"] for state in snapshots} <= {"idle", "moving"}
+    assert all(state["vy"] == 0.0 for state in snapshots)
+
+
+def test_telemetry_snapshot_is_complete_and_tracks_actions() -> None:
+    controller = ActionController(FakeRuntime())
+    controller.submit(MoveCommand(Direction.LEFT))
+
+    assert controller.telemetry_snapshot() == controller.snapshot()
+    assert controller.telemetry_snapshot()["motion_state"] == "moving"
+    assert controller.telemetry_snapshot()["vx"] == 0.2
+    assert controller.telemetry_snapshot()["vy"] == 0.0
+    assert controller.telemetry_snapshot()["yaw"] == 0.8
+    assert controller.telemetry_snapshot()["active_action"] == "move"
+
+    controller.submit(StopCommand())
+    assert controller.telemetry_snapshot()["active_action"] == "none"
+
+    controller.submit(KickCommand(Foot.RIGHT))
+    assert controller.telemetry_snapshot()["active_action"] == "kick"

@@ -63,8 +63,8 @@ def main() -> None:
         "    demo_controller = ActionController(\n"
         "        demo_runtime, command_timeout_s=demo_mqtt.config.command_timeout,\n"
         "    )\n"
-        "    demo_mqtt.start(demo_controller.snapshot())\n"
-        "    demo_last_state = demo_controller.snapshot()\n\n"
+        "    demo_mqtt.start(demo_controller.telemetry_snapshot())\n"
+        "    demo_last_state = demo_controller.telemetry_snapshot()\n\n"
         "    # Verify observation size\n",
     )
     generated = replace_once(
@@ -85,11 +85,16 @@ def main() -> None:
         "                    except Exception as exc:\n"
         "                        result = {'code': 500, 'msg': str(exc), 'data': demo_controller.snapshot()}\n"
         "                    demo_mqtt.resolve(pending, result)\n"
+        "                    # Device Agent requires a fresh state report after every command,\n"
+        "                    # including repeated commands whose values did not change.\n"
+        "                    demo_state = demo_controller.telemetry_snapshot()\n"
+        "                    demo_mqtt.publish_state(demo_state)\n"
+        "                    demo_last_state = demo_state\n"
         "                    pending = demo_mqtt.poll()\n\n"
         "                policy.update_ground_pick_phase(actual_dt)\n"
         "                policy.update_behavior(actual_dt)\n"
         "                demo_controller.update(actual_dt)\n"
-        "                demo_state = demo_controller.snapshot()\n"
+        "                demo_state = demo_controller.telemetry_snapshot()\n"
         "                if demo_state != demo_last_state:\n"
         "                    demo_mqtt.publish_state(demo_state)\n"
         "                    demo_last_state = demo_state\n"
